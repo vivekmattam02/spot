@@ -1,0 +1,56 @@
+# Credentials - NEVER commit config.yaml with real passwords
+config/config.yaml
+
+# YOLO model weights (download at runtime)
+*.pt
+
+# ZED camera calibration files (camera-specific)
+SN*.conf
+
+# Docker images
+*.tar.gz
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+
+# Distribution
+build/
+dist/
+*.egg-info/
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Debug output
+debug_frames/
+test_outputs/
+*.jpg
+*.png
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Environment files
+.env
+.env.local
+*.env

@@ -1,0 +1,213 @@
+# =============================================================================
+# Spot Person Follower - Docker Compose Configuration
+# =============================================================================
+#
+# USAGE:
+#
+#   Build the image:
+#       docker-compose build
+#
+#   Run person follower:
+#       docker-compose up spot-follower
+#
+#   Run with display (visualization):
+#       xhost +local:docker  # Allow Docker to access display
+#       docker-compose up spot-follower-display
+#
+#   Run tests:
+#       docker-compose run --rm test-detection
+#       docker-compose run --rm test-camera
+#       docker-compose run --rm test-mobility
+#
+#   Interactive shell:
+#       docker-compose run --rm shell
+#
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # Main person follower (no display)
+  # ---------------------------------------------------------------------------
+  spot-follower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: spot-person-follower:latest
+    container_name: spot-follower
+
+    # GPU access
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    # Network: host mode to access Spot at 192.168.80.3
+    network_mode: host
+
+    # Mount config for easy editing without rebuild
+    volumes:
+      - ./config:/app/config:ro
+
+    # Run the main application
+    command: python src/main.py
+
+    # Keep running even if it exits (for debugging)
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # Person follower with display (visualization)
+  # ---------------------------------------------------------------------------
+  spot-follower-display:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: spot-person-follower:latest
+    container_name: spot-follower-display
+
+    # GPU access
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    # Network: host mode
+    network_mode: host
+
+    # X11 display forwarding
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+    volumes:
+      - ./config:/app/config:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+
+    command: python src/main.py
+
+  # ---------------------------------------------------------------------------
+  # Test: YOLO detection (uses webcam)
+  # ---------------------------------------------------------------------------
+  test-detection:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: spot-person-follower:latest
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    network_mode: host
+
+    environment:
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # Mount webcam
+      - /dev/video0:/dev/video0
+
+    # Access to video devices
+    devices:
+      - /dev/video0:/dev/video0
+
+    command: python tests/test_detection.py
+
+  # ---------------------------------------------------------------------------
+  # Test: Camera (requires Spot connection)
+  # ---------------------------------------------------------------------------
+  test-camera:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: spot-person-follower:latest
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    network_mode: host
+
+    volumes:
+      - ./config:/app/config:ro
+      - ./test_outputs:/app/test_outputs
+
+    command: >
+      python tests/test_camera.py
+      --hostname 192.168.80.3
+      --save-path /app/test_outputs/camera_test.jpg
+
+  # ---------------------------------------------------------------------------
+  # Test: Mobility (requires Spot connection - ROBOT WILL MOVE!)
+  # ---------------------------------------------------------------------------
+  test-mobility:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: spot-person-follower:latest
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    network_mode: host
+
+    volumes:
+      - ./config:/app/config:ro
+
+    # Interactive mode for confirmation prompts
+    stdin_open: true
+    tty: true
+
+    command: python tests/test_mobility.py --hostname 192.168.80.3
+
+  # ---------------------------------------------------------------------------
+  # Interactive shell for debugging
+  # ---------------------------------------------------------------------------
+  shell:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: spot-person-follower:latest
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+    network_mode: host
+
+    environment:
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - ./config:/app/config:ro
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+      - ./utils:/app/utils:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+
+    stdin_open: true
+    tty: true
+
+    command: /bin/bash

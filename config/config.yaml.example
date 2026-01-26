@@ -1,0 +1,57 @@
+# Spot Person Follower Configuration
+# Copy this file to config.yaml and fill in your credentials
+
+# Spot Robot Connection
+spot:
+  hostname: "192.168.80.3"        # Your Spot's IP address
+  username: "YOUR_USERNAME"       # Your Spot username
+  password: "YOUR_PASSWORD"       # Your Spot password
+  camera_source: "frontleft_fisheye_image"
+
+# ZED Camera (if using external ZED camera)
+zed:
+  enabled: true
+  resolution: "HD720"             # HD720, HD1080, or HD2K
+  fps: 30
+
+# Control Parameters
+control:
+  kp_linear: 0.5                  # Forward/backward gain
+  kp_angular: 0.5                 # Turning gain
+  kp_pitch: 0.2                   # Body pitch gain
+  control_rate_hz: 10
+  deadband: 0.05
+  max_pitch_up: 0.72              # ~41 degrees
+  max_pitch_down: 0.26            # ~15 degrees
+
+# Safety Limits
+safety:
+  max_linear_velocity: 0.5        # m/s
+  max_angular_velocity: 0.6       # rad/s
+  detection_timeout: 3.0          # seconds
+  velocity_ramp_rate: 0.1
+
+# Person Detection
+perception:
+  model_path: "yolov8n.pt"
+  confidence_threshold: 0.8
+  person_class_id: 0
+  use_gpu: true
+
+# Target Following Distance
+target:
+  target_bbox_area: 168750        # Larger = closer following
+  image_width: 1280
+  image_height: 720
+
+# State Machine
+state_machine:
+  search_angular_velocity: 0.2
+  max_search_duration: 30.0
+
+# Debug Options
+debug:
+  show_visualization: false
+  verbose_logging: true
+  save_frames: false
+  save_frames_path: "./debug_frames/"

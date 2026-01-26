@@ -1,0 +1,58 @@
+# =============================================================================
+# Spot Person Follower - Python Dependencies
+# =============================================================================
+# IMPORTANT: Requires Python 3.8, 3.9, or 3.10
+#            Python 3.11+ may have compatibility issues with Spot SDK
+#            Python 3.7 is too old for PyTorch 2.0
+#
+# Check your Python version: python --version
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Boston Dynamics Spot SDK
+# -----------------------------------------------------------------------------
+# NOTE: Version should match your robot's software version
+# Check robot version on the tablet or via: https://192.168.80.3
+# Common versions: 4.0.0, 4.1.0, 5.0.0, 5.1.0
+# If unsure, use the latest that works with your robot
+bosdyn-client>=4.0.0,<6.0.0
+bosdyn-api>=4.0.0,<6.0.0
+
+# Optional: Uncomment if you need mission or choreography features
+# bosdyn-mission>=4.0.0,<6.0.0
+# bosdyn-choreography-client>=4.0.0,<6.0.0
+
+# -----------------------------------------------------------------------------
+# Deep Learning & Object Detection
+# -----------------------------------------------------------------------------
+# PyTorch - for YOLO neural network
+# NOTE: For CUDA GPU support, you may need to install PyTorch separately:
+#       pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Ultralytics YOLO - object detection framework
+ultralytics>=8.0.0
+
+# -----------------------------------------------------------------------------
+# Image Processing
+# -----------------------------------------------------------------------------
+opencv-python>=4.8.0
+# NOTE: When using ZED SDK Docker image, do NOT pin numpy version.
+# The ZED SDK has pyzed compiled against a specific numpy version.
+# numpy>=1.20.0  # Commented out - let ZED SDK provide numpy
+Pillow>=10.0.0
+
+# -----------------------------------------------------------------------------
+# Configuration & Utilities
+# -----------------------------------------------------------------------------
+pyyaml>=6.0
+typing-extensions>=4.0.0
+
+# -----------------------------------------------------------------------------
+# Optional: Development & Testing
+# -----------------------------------------------------------------------------
+# Uncomment if needed:
+# pytest>=7.0.0
+# black>=23.0.0
+# flake8>=6.0.0

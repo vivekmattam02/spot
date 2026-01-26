@@ -1,0 +1,67 @@
+# =============================================================================
+# Docker Ignore File
+# =============================================================================
+# Files and directories to exclude when building Docker image
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Docker files (don't need to copy into image)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation (optional - comment out if you want docs in image)
+# *.md
+# *.txt
+DOCUMENTATION.md
+COMPLETE_EXPLANATION.txt
+
+# Test outputs
+test_outputs/
+debug_frames/
+*.jpg
+*.png
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files with secrets
+.env
+.env.local
+*.env
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
