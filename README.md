@@ -13,7 +13,7 @@ The entire codebase was implemented in **under 24 hours**. That's the perception
 
 ### 🎬 Demo
 
-<video src="media/Spot_follower_visual_servo_an.mp4" controls width="100%">
+<video src="https://github.com/user-attachments/assets/e9305f95-9c92-40be-8fdf-2696bce7b857" controls width="100%">
   Your browser does not support the video tag. <a href="media/Spot_follower_visual_servo_an.mp4">Download the demo video</a>.
 </video>
 
