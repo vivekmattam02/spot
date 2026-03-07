@@ -1,111 +1,182 @@
-# Spot Person Follower
+# Spot Person Follower — Visual Servoing with YOLOv8
 
-Autonomous person-following system for the Boston Dynamics Spot robot using visual servoing and YOLOv8.
+[![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python)](https://python.org)
+[![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker)](https://docker.com)
+[![YOLOv8](https://img.shields.io/badge/YOLOv8-Ultralytics-FF6F61)](https://docs.ultralytics.com)
+[![Spot SDK](https://img.shields.io/badge/Spot-Boston%20Dynamics-FFD700)](https://dev.bostondynamics.com)
 
-## Overview
+We built an autonomous person-following system for the **Boston Dynamics Spot** robot. It uses a **ZED 2i stereo camera** for image capture, **YOLOv8** for real-time person detection, and a **centroid-based visual servoing controller** that turns bounding-box errors into velocity commands. The whole thing runs inside Docker with GPU acceleration — one command to build, one command to run.
 
-This system enables Spot to autonomously follow a person using:
-- ZED 2i stereo camera for image capture
-- YOLOv8 for real-time person detection
-- Proportional control for smooth tracking
-- Body pitch control for tracking on stairs
+The idea was simple: point Spot at a person, and have it follow them around — adjusting speed, turning, and even body pitch (for stairs) — all from a single camera feed. No depth estimation, no fancy planning. Just proportional control on three error signals and a state machine to handle what happens when the person disappears.
 
-## Features
+The entire codebase was implemented in **under 24 hours**. That's the perception pipeline, visual servoing controller, state machine, web streaming server, Docker infrastructure, and test suite — all in a day.
 
-- Real-time person detection and tracking
-- Visual servoing with three control signals (lateral, distance, pitch)
-- Automatic search behavior when person is lost
-- Live web stream for monitoring (Flask server on port 5000)
-- Docker support with GPU acceleration
+### 🎬 Demo
 
-## Requirements
+<video src="media/Spot_follower_visual_servo_an.mp4" controls width="100%">
+  Your browser does not support the video tag. <a href="media/Spot_follower_visual_servo_an.mp4">Download the demo video</a>.
+</video>
 
-- Boston Dynamics Spot robot
-- NVIDIA GPU with CUDA support
-- Docker with NVIDIA Container Toolkit
-- ZED 2i camera (optional, falls back to Spot's cameras)
+---
 
-## Quick Start
+## What It Does
 
-1. Clone and setup:
-```bash
-git clone https://github.com/vivekmattam02/spot.git
-cd spot
-cp config/config.yaml.example config/config.yaml
-# Edit config/config.yaml with your Spot credentials
+Spot stands up, starts grabbing frames from the ZED 2i at 720p/30fps, and runs YOLOv8 on each frame to find people. When it locks onto someone, the visual servoing controller kicks in and computes three error signals:
+
+- **Lateral error** — how far the person's bounding box center is from the image center horizontally → turns the robot
+- **Distance error** — how different the bounding box area is from a target size → moves the robot forward/backward
+- **Pitch error** — how far the person is from center vertically → tilts Spot's body up/down (useful on stairs)
+
+These errors get run through proportional gains, clamped to safe velocity limits, smoothed with acceleration ramping, and sent to Spot at 10 Hz. There's also a Flask web server on port 5000 that streams the annotated camera feed so you can watch what Spot sees from your laptop.
+
+```
+ZED 2i Camera (1280×720 @ 30fps)
+        │
+  YOLOv8 Inference (GPU) ──► Bounding Box + Confidence
+        │
+  Behavior State Machine
+        │
+        ├── TRACKING → Visual Servoing → v_x, ω, pitch → Spot SDK
+        ├── SEARCH   → Rotate in place (looking for person)
+        └── STOPPED  → Idle (search timed out)
 ```
 
-2. Build Docker image:
-```bash
-./docker_run.sh build
-```
+The state machine handles the transitions: if detection is lost for more than 2 seconds, Spot starts rotating to search. If it doesn't find anyone after 30 seconds, it gives up and stops. The moment it re-detects a person, it snaps back to tracking.
 
-3. Run:
-```bash
-./docker_run.sh run
-```
+---
 
-4. View live feed at `http://<your-ip>:5000`
+## How the Visual Servoing Works
 
-## Configuration
+The controller is basically three P-controllers running in parallel. Nothing fancy — no PID, no model predictive control — just proportional gains with some engineering to make it smooth:
 
-Copy `config/config.yaml.example` to `config/config.yaml` and set:
-- `spot.hostname`: Your Spot's IP address
-- `spot.username`: Your Spot username
-- `spot.password`: Your Spot password
+1. **Compute errors** from the bounding box vs. image center and target area
+2. **Apply deadband** — ignore small errors to prevent jitter
+3. **Saturate velocities** — hard clamp to safety limits (0.5 m/s forward, 0.6 rad/s turning)
+4. **Ramp acceleration** — limit how fast velocities can change between cycles
+5. **Send commands** to Spot at 10 Hz
 
-Key tuning parameters:
-- `control.kp_linear`: Forward/backward responsiveness (default: 0.5)
-- `control.kp_angular`: Turning responsiveness (default: 0.5)
-- `control.kp_pitch`: Body tilt responsiveness (default: 0.2)
-- `target.target_bbox_area`: Following distance (larger = closer)
+| Parameter | Value | What it does |
+|---|---|---|
+| `kp_linear` | 0.5 | Forward/backward aggressiveness |
+| `kp_angular` | 0.5 | Turning aggressiveness |
+| `kp_pitch` | 0.2 | Body tilt aggressiveness |
+| `target_bbox_area` | 168750 px² | Following distance (bigger = closer) |
+| `max_linear_velocity` | 0.5 m/s | Speed cap |
+| `max_angular_velocity` | 0.6 rad/s | Turn rate cap |
+| `confidence_threshold` | 0.8 | YOLO confidence filter |
+
+All of these are configurable in `config/config.yaml` so you can tune behavior without rebuilding the Docker image.
+
+---
 
 ## Project Structure
 
 ```
-spot/
-├── config/
-│   └── config.yaml.example    # Configuration template
 ├── src/
-│   ├── main.py                # Entry point, control loop, web server
-│   ├── spot_controller.py     # Spot SDK interface
-│   ├── perception.py          # ZED camera + YOLO detection
-│   ├── visual_servoing.py     # Control law implementation
-│   └── state_machine.py       # Behavior state management
-├── tests/                     # Test scripts
-├── utils/                     # Visualization utilities
-├── Dockerfile
-├── docker-compose.yml
-└── requirements.txt
+│   ├── main.py                 # Entry point — control loop + Flask web server
+│   ├── perception.py           # ZED 2i camera wrapper + YOLOv8 person detector
+│   ├── visual_servoing.py      # Proportional control law (3-axis)
+│   ├── state_machine.py        # TRACKING / SEARCH / STOPPED behavior FSM
+│   ├── spot_controller.py      # Boston Dynamics Spot SDK wrapper
+│   └── camera_viewer.py        # Standalone camera viewer utility
+│
+├── config/
+│   └── config.yaml.example     # Copy to config.yaml and fill in Spot credentials
+│
+├── tests/
+│   ├── test_detection.py       # Test YOLO with webcam
+│   ├── test_camera.py          # Test Spot camera connection
+│   └── test_mobility.py        # Test robot movement (⚠️ robot will move)
+│
+├── utils/
+│   └── visualization.py        # Debug overlays and visualization
+│
+├── media/
+│   └── Spot_follower_visual_servo.mp4
+│
+├── Dockerfile                  # Based on stereolabs/zed:4.2-runtime-cuda12.1-ubuntu22.04
+├── docker-compose.yml          # 6 services: run, display, tests, shell
+├── docker_run.sh               # CLI helper — ./docker_run.sh build | run | test-*
+├── requirements.txt
+└── setup_environment.sh
 ```
 
-## How It Works
+---
 
-1. Camera captures frame (1280x720 @ 30fps)
-2. YOLOv8 detects person, returns bounding box
-3. Visual servoing computes three errors:
-   - Lateral error: horizontal offset from image center
-   - Distance error: difference from target bounding box area
-   - Pitch error: vertical offset from image center
-4. Proportional control converts errors to velocity commands
-5. Commands sent to Spot at 10Hz
+## Docker Setup
+
+Everything runs in Docker. The image is based on `stereolabs/zed:4.2-runtime-cuda12.1-ubuntu22.04` which comes with the ZED SDK and CUDA pre-installed. On top of that we layer PyTorch, YOLOv8, the Boston Dynamics SDK, OpenCV, and Flask.
+
+One gotcha we ran into: the ZED base image ships with `numpy 1.26.4`, and PyTorch/Ultralytics try to upgrade it to 2.x, which breaks the ZED Python bindings. The Dockerfile forces `numpy==1.26.4` after all other installs to fix this.
+
+```bash
+# Build
+./docker_run.sh build
+
+# Run
+./docker_run.sh run
+
+# Run with X11 display forwarding
+./docker_run.sh run-display
+
+# Check prerequisites (Docker, NVIDIA, GPU, network to Spot)
+./docker_run.sh check
+```
+
+The `docker-compose.yml` defines six services — the main follower (headless and with display), three test containers (detection, camera, mobility), and an interactive shell for debugging.
+
+---
+
+## Running It
+
+**You'll need:** A Boston Dynamics Spot robot, an NVIDIA GPU with (This was an external CPU attached to the robot in our case), Docker with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html), and optionally a ZED 2i camera (falls back to Spot's onboard cameras).
+
+```bash
+# Clone and configure
+git clone https://github.com/vivekmattam02/spot.git
+cd spot
+cp config/config.yaml.example config/config.yaml
+# Edit config.yaml with your Spot's IP, username, and password
+
+# Build and run
+./docker_run.sh build
+./docker_run.sh run
+
+# Watch the live feed
+# Open http://<your-ip>:5000 in a browser
+```
+
+### Testing
+
+You can test individual components without running the full system:
+
+```bash
+./docker_run.sh test-detection   # YOLO detection with your webcam
+./docker_run.sh test-camera      # Spot camera connection
+./docker_run.sh test-mobility    # Robot movement (⚠️ ROBOT WILL MOVE!)
+./docker_run.sh shell            # Interactive shell for debugging
+```
+
+---
 
 ## Safety
 
-- Hardware E-Stop always available
-- Software E-Stop with keepalive
-- Velocity limits enforced
-- Smooth acceleration ramping
-- Automatic stop on detection loss
+We built in multiple safety layers because, well, Spot is expensive and heavy:
 
-## Testing
+- **Hardware E-Stop** on the controller — always available
+- **Software E-Stop** with keepalive timeout
+- **Velocity saturation** — hard limits on speed and turn rate
+- **Acceleration ramping** — smooth transitions, no jerky starts
+- **Deadband** — ignores tiny errors so the robot doesn't twitch
+- **Auto-stop** — immediately stops when person detection is lost
+- **Search timeout** — stops rotating after 30 seconds if nobody is found
 
-```bash
-./docker_run.sh test-detection   # Test YOLO with webcam
-./docker_run.sh test-camera      # Test Spot camera
-./docker_run.sh test-mobility    # Test robot movement (robot will move!)
-```
+---
 
-## License
+## Team
 
-MIT License
+- **Vivekanada Swamy Mattam** — Wrote the majority of the Docker infrastructure. The Dockerfile, docker-compose orchestration, docker_run helper script, and the whole containerized deployment pipeline were his work.
+- **Rahul Reghunath** — Came up with the initial idea for the centroid-based visual servoing approach, and the person being followed.
+- **Tarunkumar Palanivelan** — Handled the camera SDK integration (ZED 2i setup, configuration) and the physical system setup.
+- **Jotheesh Reddy K** — Initial Planning and python codes for testing
+
