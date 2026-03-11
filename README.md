@@ -11,7 +11,7 @@ The idea was simple: point Spot at a person, and have it follow them around — 
 
 The entire codebase was implemented in **under 24 hours**. That's the perception pipeline, visual servoing controller, state machine, web streaming server, Docker infrastructure, and test suite — all in a day.
 
-### 🎬 Demo
+### Demo
 
 <video src="https://github.com/user-attachments/assets/e9305f95-9c92-40be-8fdf-2696bce7b857" controls width="100%">
   Your browser does not support the video tag. <a href="media/Spot_follower_visual_servo_an.mp4">Download the demo video</a>.
@@ -86,7 +86,7 @@ All of these are configurable in `config/config.yaml` so you can tune behavior w
 ├── tests/
 │   ├── test_detection.py       # Test YOLO with webcam
 │   ├── test_camera.py          # Test Spot camera connection
-│   └── test_mobility.py        # Test robot movement (⚠️ robot will move)
+│   └── test_mobility.py        # Test robot movement ( robot will move)
 │
 ├── utils/
 │   └── visualization.py        # Debug overlays and visualization
@@ -153,7 +153,7 @@ You can test individual components without running the full system:
 ```bash
 ./docker_run.sh test-detection   # YOLO detection with your webcam
 ./docker_run.sh test-camera      # Spot camera connection
-./docker_run.sh test-mobility    # Robot movement (⚠️ ROBOT WILL MOVE!)
+./docker_run.sh test-mobility    # Robot movement ( ROBOT WILL MOVE!)
 ./docker_run.sh shell            # Interactive shell for debugging
 ```
 
@@ -175,8 +175,8 @@ We built in multiple safety layers because, well, Spot is expensive and heavy:
 
 ## Team
 
-- **Vivekanada Swamy Mattam** — Wrote the majority of the Docker infrastructure. The Dockerfile, docker-compose orchestration, docker_run helper script, and the whole containerized deployment pipeline were his work.
-- **Rahul Reghunath** — Came up with the initial idea for the centroid-based visual servoing approach, and the person being followed.
-- **Tarunkumar Palanivelan** — Handled the camera SDK integration (ZED 2i setup, configuration) and the physical system setup.
-- **Jotheesh Reddy K** — Initial Planning and python codes for testing
+- **Vivekanada Swamy Mattam**
+- **Rahul Reghunath**
+- **Tarunkumar Palanivelan** 
+- **Jotheesh Reddy K** 
 
